@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
@@ -9,6 +9,10 @@
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <!-- Marked.js for Markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<!-- html2pdf.js for direct PDF download -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- Google Fonts: UnifrakturMaguntia (blackletter) + Dancing Script (handwritten) -->
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <!-- Canvas Confetti -->
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <!-- Pyodide Python 3 WASM Runtime -->
@@ -324,12 +328,71 @@
     bottom: 24px;
     right: 24px;
     z-index: 45;
-    box-shadow: 0 4px 25px rgba(0,0,0,0.4);
-    animation: pulseGlow 3s infinite;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid oklch(var(--p)/0.4);
+    background: oklch(var(--p));
+    color: oklch(var(--pc));
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 28px oklch(var(--p)/0.5);
+    animation: fabFloat 3.6s ease-in-out infinite;
+    transition: box-shadow 0.18s, border-color 0.18s;
+    outline: none;
+    padding: 0;
+    touch-action: none; /* needed for pointer events on mobile */
+    user-select: none;
   }
-  @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 15px oklch(var(--p)/0.4); }
-    50% { box-shadow: 0 0 25px oklch(var(--p)/0.8); }
+  #ai-fab.is-dragging {
+    animation: none;
+    cursor: grabbing;
+    box-shadow: 0 10px 40px oklch(var(--p)/0.7);
+    border-color: oklch(var(--p)/0.8);
+  }
+  #ai-fab:hover:not(.is-dragging) {
+    box-shadow: 0 8px 36px oklch(var(--p)/0.65);
+  }
+  @keyframes fabFloat {
+    0%,100% { transform: translateY(0px); }
+    50%      { transform: translateY(-6px); }
+  }
+  @keyframes popoverIn {
+    from { opacity:0; transform:translateY(-6px) scale(0.97); }
+    to   { opacity:1; transform:translateY(0)    scale(1);    }
+  }
+  /* Eyes container */
+  .fab-eyes {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+  /* Single eye sclera */
+  .fab-eye {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+  }
+  /* Pupil */
+  .fab-pupil {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #1a1a2e;
+    transition: transform 0.07s linear;
+    flex-shrink: 0;
+    pointer-events: none;
   }
 
 
@@ -869,10 +932,10 @@
       z-index: 70;
     }
     #ai-fab {
-      bottom: 14px;
-      right: 14px;
-      height: 42px;
-      padding: 0 14px;
+      bottom: 16px;
+      right: 16px;
+      width: 54px;
+      height: 54px;
     }
     #course-content-panel {
       padding: 14px 12px 80px !important;
@@ -950,7 +1013,7 @@
       ☰
     </button>
     <div class="flex items-center gap-2 cursor-pointer" id="brand-home-btn">
-      <span class="text-2xl">🐍</span>
+      <img src="New_logo.png" alt="ABraz.py Logo" style="height:32px;width:auto;object-fit:contain;display:block;">
       <div>
         <div class="font-extrabold text-base leading-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           Python Seekho <span class="badge badge-primary badge-xs font-mono ml-1">V.1</span>
@@ -981,25 +1044,92 @@
       <span id="kernel-label">WASM Kernel</span>
     </div>
 
-    <!-- Points Badge -->
-    <div class="badge badge-outline badge-primary font-mono text-xs gap-1 py-3 cursor-pointer hover:bg-primary hover:text-primary-content transition-colors" id="points-badge" onclick="showCertificateModal()" title="View Certificate & Score">
-      ⭐ 0 pts
+    <!-- Progress Pill + Popover -->
+    <div class="relative" id="progress-pill-wrap">
+      <button id="points-badge"
+        onclick="toggleProgressPopover()"
+        title="Progress & Score dekho"
+        style="
+          display:flex;align-items:center;gap:7px;
+          padding:0 12px 0 6px;height:32px;
+          border-radius:9999px;
+          border:1px solid oklch(var(--p)/0.35);
+          background:oklch(var(--b2)/0.85);
+          backdrop-filter:blur(8px);
+          box-shadow:0 0 0 1px oklch(var(--p)/0.08),0 2px 10px oklch(var(--p)/0.15);
+          cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;
+          font-size:0.78rem;font-weight:700;font-family:ui-monospace,monospace;
+          color:oklch(var(--bc));white-space:nowrap;
+        "
+        onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 0 0 1px oklch(var(--p)/0.2),0 4px 16px oklch(var(--p)/0.25)'"
+        onmouseout="this.style.transform='';this.style.boxShadow='0 0 0 1px oklch(var(--p)/0.08),0 2px 10px oklch(var(--p)/0.15)'">
+        <!-- SVG progress ring -->
+        <svg id="pill-ring-svg" width="22" height="22" viewBox="0 0 22 22" style="flex-shrink:0;transform:rotate(-90deg);">
+          <circle cx="11" cy="11" r="8" fill="none" stroke="oklch(var(--b3))" stroke-width="2.5"/>
+          <circle id="pill-ring-arc" cx="11" cy="11" r="8" fill="none"
+            stroke="oklch(var(--p))" stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-dasharray="50.27" stroke-dashoffset="50.27"
+            style="transition:stroke-dashoffset 0.5s ease;"/>
+        </svg>
+        <span style="color:oklch(var(--wa));">⭐</span>
+        <span id="pill-pts-text">0 pts</span>
+      </button>
+
+      <!-- Popover card -->
+      <div id="progress-popover" style="
+        display:none;position:absolute;top:calc(100% + 8px);right:0;
+        width:240px;z-index:60;
+        background:oklch(var(--b2));
+        border:1px solid oklch(var(--b3));
+        border-radius:16px;
+        box-shadow:0 8px 32px oklch(var(--b1)/0.5),0 0 0 1px oklch(var(--p)/0.1);
+        padding:14px;font-size:0.8rem;
+        animation:popoverIn 0.15s ease;
+      ">
+        <!-- Chapter count + bar -->
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <span style="font-weight:700;font-size:0.75rem;opacity:0.7;">Chapters</span>
+            <span id="pop-ch-count" style="font-weight:800;font-size:0.78rem;">0 / 48</span>
+          </div>
+          <div style="height:6px;border-radius:9999px;background:oklch(var(--b3));overflow:hidden;">
+            <div id="pop-ch-bar" style="height:100%;border-radius:9999px;background:oklch(var(--p));width:0%;transition:width 0.4s ease;"></div>
+          </div>
+          <div id="pop-ch-pct" style="text-align:right;font-size:0.68rem;opacity:0.5;margin-top:3px;">0%</div>
+        </div>
+        <!-- Points row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:10px;background:oklch(var(--b3)/0.5);margin-bottom:8px;">
+          <span style="font-weight:600;opacity:0.75;">Total Points</span>
+          <span id="pop-pts" style="font-weight:900;font-family:ui-monospace,monospace;color:oklch(var(--wa));">⭐ 0 pts</span>
+        </div>
+        <!-- Rank badge -->
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:oklch(var(--p)/0.1);border:1px solid oklch(var(--p)/0.2);">
+          <span id="pop-rank-icon" style="font-size:1.3rem;">🥚</span>
+          <div>
+            <div id="pop-rank-label" style="font-weight:800;font-size:0.78rem;color:oklch(var(--p));">Pehla Qadam</div>
+            <div style="font-size:0.65rem;opacity:0.55;">Aage badhte raho!</div>
+          </div>
+        </div>
+        <!-- View certificate link -->
+        <button onclick="showCertificateModal();toggleProgressPopover()" style="width:100%;margin-top:10px;padding:6px;border-radius:8px;border:1px solid oklch(var(--b3));background:transparent;cursor:pointer;font-size:0.72rem;font-weight:600;opacity:0.65;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">
+          🎓 Certificate Dekho
+        </button>
+      </div>
     </div>
 
-    <!-- Theme Selector Dropdown -->
+    <!-- Theme / Mood Dropdown -->
     <div class="dropdown dropdown-end">
-      <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-1 px-2" title="Theme chunno">
+      <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-1.5 px-2.5 font-semibold text-xs" title="Theme / Mood chunno" id="theme-mood-btn">
         <span id="current-theme-icon">🌙</span>
+        <span class="hidden sm:inline text-[11px] opacity-70">Mood</span>
       </div>
-      <ul tabindex="0" class="dropdown-content menu p-2 shadow-2xl bg-base-200 rounded-box w-48 max-h-72 overflow-y-auto z-50 border border-base-300" id="theme-menu-list">
-        <!-- themes injected via JS -->
+      <ul tabindex="0" class="dropdown-content z-50 shadow-2xl rounded-2xl border border-base-300 overflow-hidden w-56" id="theme-menu-list" style="background: oklch(var(--b2)); padding: 6px;">
+        <!-- mood themes injected via JS -->
       </ul>
     </div>
 
-    <!-- Settings Button -->
-    <button id="open-settings-btn" class="btn btn-sm btn-ghost btn-circle" title="Settings & Gemini API">
-      ⚙️
-    </button>
+
   </div>
 </header>
 
@@ -1037,7 +1167,9 @@
   <main id="course-content-panel" class="view-panel active p-4 md:p-8">
     <!-- Welcome Screen -->
     <div id="course-welcome-screen" class="max-w-3xl mx-auto my-auto text-center py-10">
-      <div class="text-6xl mb-4 animate-bounce">🐍</div>
+      <div class="text-6xl mb-4 animate-bounce" style="line-height:1;">
+        <img src="New_logo.png" alt="ABraz.py Logo" style="height:80px;width:auto;object-fit:contain;display:inline-block;">
+      </div>
       <h1 class="text-3xl md:text-5xl font-black mb-3 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
         Python Seekho V.1
       </h1>
@@ -1092,14 +1224,7 @@
           <h2 class="text-2xl font-black flex items-center gap-2" id="ch-title-heading">Chapter Title</h2>
           <div class="text-xs text-base-content/60" id="ch-subtitle-heading">Subtitle</div>
         </div>
-        <div class="flex items-center gap-2">
-          <button class="btn btn-sm btn-outline gap-1.5 text-xs flex-1 sm:flex-initial" id="ch-open-notebook-btn" title="Open this chapter in Jupyter Notebook">
-            <span>📓</span> Open in Notebook
-          </button>
-          <button class="btn btn-sm btn-primary gap-1.5 text-xs flex-1 sm:flex-initial" id="ch-ask-gemini-btn">
-            <span>✨</span> Ask Abraz
-          </button>
-        </div>
+
       </div>
 
       <!-- Chapter Tabs: Seekho | Practice | Quiz (Mobile-First Full Width Grid on small screens) -->
@@ -1407,9 +1532,11 @@
 <div id="mobile-sidebar-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
 
 <!-- FLOATING ASK ABRAZ TOGGLE BUTTON -->
-<button id="ai-fab" class="btn btn-primary rounded-full px-4 sm:px-5 h-11 sm:h-12 min-h-0 shadow-xl flex items-center gap-2 font-extrabold text-xs sm:text-sm border border-primary-content/20" title="Ask Abraz AI Tutor">
-  <span class="text-base sm:text-lg">✨</span>
-  <span>Ask Abraz</span>
+<button id="ai-fab" title="Ask Abraz AI">
+  <span class="fab-eyes" id="fab-eyes" aria-hidden="true">
+    <span class="fab-eye" id="fab-eye-left"><span class="fab-pupil" id="fab-pupil-left"></span></span>
+    <span class="fab-eye" id="fab-eye-right"><span class="fab-pupil" id="fab-pupil-right"></span></span>
+  </span>
 </button>
 
 <!-- ==================== SETTINGS & API KEY MODAL ==================== -->
@@ -1423,21 +1550,28 @@
     </div>
 
     <div class="space-y-4 text-sm">
-      <!-- Gemini API Key -->
+      <!-- Universal API Key -->
       <div>
         <label class="label font-bold text-xs flex items-center justify-between">
-          <span>Google Gemini API Key (AI Studio)</span>
+          <span>AI Provider API Key</span>
           <span class="badge badge-xs badge-ghost font-mono" id="key-saved-indicator">Not Set</span>
         </label>
         <div class="join w-full">
-          <input type="password" id="gemini-api-key-input" placeholder="AIzaSy..." 
-            class="input input-bordered input-sm join-item flex-1 font-mono text-xs" />
+          <input type="password" id="gemini-api-key-input" placeholder="Paste any key: AIza... / sk-... / gsk_... / sk-ant-..."
+            class="input input-bordered input-sm join-item flex-1 font-mono text-xs" autocomplete="off" />
           <button type="button" id="toggle-key-visibility-btn" class="btn btn-sm btn-bordered join-item px-3" title="Show/Hide Key">
             👁️
           </button>
         </div>
-        <p class="text-[11px] text-base-content/50 mt-1">
-          Apni free API key <a href="https://aistudio.google.com/app/apikey" target="_blank" class="link link-primary font-semibold">Google AI Studio</a> se copy karein (starts with <code>AIza...</code>).
+        <!-- Live provider detection badge -->
+        <div id="provider-detect-badge" class="hidden mt-2 p-2 rounded-lg text-xs border bg-success/10 border-success/30 text-success font-semibold"></div>
+        <p class="text-[11px] text-base-content/50 mt-1.5 leading-relaxed">
+          Supported providers — paste key aur auto-detect ho ga:<br>
+          <span class="font-mono">AIza…</span> → Gemini &nbsp;|&nbsp;
+          <span class="font-mono">sk-proj-…/sk-…</span> → OpenAI &nbsp;|&nbsp;
+          <span class="font-mono">gsk_…</span> → Groq &nbsp;|&nbsp;
+          <span class="font-mono">sk-ant-…</span> → Claude &nbsp;|&nbsp;
+          <span class="font-mono">sk-or-…</span> → OpenRouter
         </p>
         <!-- Inline Connection Diagnostic Box -->
         <div id="api-connection-status" class="hidden mt-2 p-2.5 rounded-lg text-xs leading-relaxed border"></div>
@@ -1480,66 +1614,213 @@
 
 <!-- ==================== CERTIFICATE MODAL ==================== -->
 <div class="modal-overlay" id="certificate-modal">
-  <div class="modal-card max-w-2xl text-center">
-    <div id="certificate-inner-wrap" class="p-6 rounded-2xl bg-gradient-to-br from-[#090920] via-[#12123a] to-[#0a1628] text-white border-2 border-primary/40 shadow-2xl relative overflow-hidden">
-      <!-- Decorative circles -->
-      <div class="absolute -top-12 -left-12 w-40 h-40 rounded-full bg-primary/10 blur-2xl"></div>
-      <div class="absolute -bottom-12 -right-12 w-40 h-40 rounded-full bg-accent/10 blur-2xl"></div>
-      
-      <div class="inline-block px-4 py-1 rounded-full border border-warning/40 bg-warning/10 text-warning text-[11px] font-bold tracking-widest uppercase mb-3">
-        Certificate of Mastery
-      </div>
+  <div class="modal-card" style="max-width:860px;width:98vw;padding:16px 12px;">
 
-      <h2 class="text-3xl font-black bg-gradient-to-r from-primary via-warning to-accent bg-clip-text text-transparent mb-1">
-        Python Seekho V.1
-      </h2>
-      <div class="text-[11px] text-white/50 tracking-widest uppercase mb-6">
-        Full Basic to Advance Python Programming Certification
-      </div>
+    <!-- ═══════════════ CERTIFICATE CARD (PDF target) ═══════════════ -->
+    <div id="certificate-inner-wrap" style="
+      background:#ffffff;
+      width:100%;
+      aspect-ratio:297/210;
+      position:relative;
+      font-family:'Times New Roman',Times,serif;
+      color:#1E293B;
+      overflow:hidden;
+      border:3px solid #1E3A8A;
+      box-shadow:0 0 0 6px #fff,0 0 0 9px #1E3A8A;
+    ">
 
-      <div class="h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent mb-5"></div>
+      <!-- ── SVG Corner Frames ───────────────────────────────────── -->
+      <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;" xmlns="http://www.w3.org/2000/svg">
+        <!-- Top-Left corner block -->
+        <rect x="0" y="0" width="56" height="56" fill="#1E3A8A"/>
+        <line x1="58" y1="0" x2="0"  y2="58" stroke="#1E3A8A" stroke-width="3"/>
+        <line x1="66" y1="0" x2="0"  y2="66" stroke="#1E3A8A" stroke-width="2" stroke-dasharray="none"/>
+        <line x1="74" y1="0" x2="0"  y2="74" stroke="#1E3A8A" stroke-width="1.5"/>
+        <!-- Top-Right corner block -->
+        <rect x="calc(100% - 56px)" y="0" width="56" height="56" fill="#1E3A8A"/>
+        <line x1="calc(100% - 58px)" y1="0" x2="100%" y2="58" stroke="#1E3A8A" stroke-width="3"/>
+        <line x1="calc(100% - 66px)" y1="0" x2="100%" y2="66" stroke="#1E3A8A" stroke-width="2"/>
+        <line x1="calc(100% - 74px)" y1="0" x2="100%" y2="74" stroke="#1E3A8A" stroke-width="1.5"/>
+        <!-- Bottom-Left corner block -->
+        <rect x="0" y="calc(100% - 56px)" width="56" height="56" fill="#1E3A8A"/>
+        <line x1="58" y1="100%" x2="0"  y2="calc(100% - 58px)" stroke="#1E3A8A" stroke-width="3"/>
+        <line x1="66" y1="100%" x2="0"  y2="calc(100% - 66px)" stroke="#1E3A8A" stroke-width="2"/>
+        <line x1="74" y1="100%" x2="0"  y2="calc(100% - 74px)" stroke="#1E3A8A" stroke-width="1.5"/>
+        <!-- Bottom-Right corner block -->
+        <rect x="calc(100% - 56px)" y="calc(100% - 56px)" width="56" height="56" fill="#1E3A8A"/>
+        <line x1="calc(100% - 58px)" y1="100%" x2="100%" y2="calc(100% - 58px)" stroke="#1E3A8A" stroke-width="3"/>
+        <line x1="calc(100% - 66px)" y1="100%" x2="100%" y2="calc(100% - 66px)" stroke="#1E3A8A" stroke-width="2"/>
+        <line x1="calc(100% - 74px)" y1="100%" x2="100%" y2="calc(100% - 74px)" stroke="#1E3A8A" stroke-width="1.5"/>
+        <!-- Inner border line -->
+        <rect x="62" y="62" width="calc(100% - 124px)" height="calc(100% - 124px)"
+              fill="none" stroke="#1E3A8A" stroke-width="1.2" stroke-dasharray="6 4"/>
+      </svg>
 
-      <p class="text-white/60 text-xs italic mb-2">This is proudly awarded to</p>
-      <div class="text-2xl md:text-3xl font-black text-warning mb-3" id="cert-student-name">
-        Abraz's Python Student
-      </div>
-
-      <p class="text-xs text-white/70 max-w-md mx-auto leading-relaxed mb-6">
-        jinhone 48 Basic to Advance chapters, interactive Jupyter Notebook sessions aur live challenges kamiyabi se mukammal kiye.
-      </p>
-
-      <div class="flex items-center justify-between border-t border-white/10 pt-4 text-[11px] text-white/50">
-        <div class="text-left">
-          <div class="text-[9px] uppercase tracking-wider text-white/40">Instructor & Mentor</div>
-          <div class="font-bold text-white/90">Abraz Baloch</div>
-          <div class="text-[9px] text-primary">SMIT Python Academy</div>
+      <!-- ── Lock Watermark Overlay (hidden when eligible) ──────── -->
+      <div id="cert-lock-watermark" style="
+        display:none;
+        position:absolute;top:0;left:0;right:0;bottom:0;
+        z-index:10;
+        background:rgba(255,255,255,0.72);
+        backdrop-filter:blur(2px);
+        -webkit-backdrop-filter:blur(2px);
+        align-items:center;justify-content:center;
+        pointer-events:none;
+      ">
+        <div style="
+          transform:rotate(-25deg);
+          text-align:center;
+          border:3px solid rgba(220,38,38,0.35);
+          padding:10px 28px;
+          border-radius:4px;
+          background:rgba(255,255,255,0.6);
+        ">
+          <div style="font-size:1.6em;font-weight:900;color:rgba(185,28,28,0.5);letter-spacing:.08em;line-height:1.2;">
+            🔒 PREVIEW ONLY
+          </div>
+          <div style="font-size:0.65em;color:rgba(185,28,28,0.45);font-weight:700;letter-spacing:.04em;margin-top:3px;">
+            Complete all 48 Chapters &amp; Quizzes to Unlock
+          </div>
         </div>
-        <div class="text-2xl">🏆</div>
-        <div class="text-right">
-          <div class="text-[9px] uppercase tracking-wider text-white/40">Issue Date</div>
-          <div class="font-bold text-white/90" id="cert-issue-date">October 2026</div>
-          <div class="text-[9px] text-warning" id="cert-final-score">Score: 480 pts</div>
+      </div>
+
+      <!-- ── Content wrapper (inside corner frames) ─────────────── -->
+      <div style="
+        position:absolute;top:68px;left:68px;right:68px;bottom:68px;
+        display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+        text-align:center;
+      ">
+
+        <!-- Serial number top-right -->
+        <div style="position:absolute;top:0;right:0;font-size:0.6em;color:#64748B;letter-spacing:.03em;">
+          No: PY-SEEKHO/2026/<span id="cert-serial">00142</span>
         </div>
+
+        <!-- HEADER -->
+        <div style="margin-top:10px;width:100%;">
+          <div style="font-size:0.65em;letter-spacing:.18em;text-transform:uppercase;color:#1E3A8A;font-weight:700;margin-bottom:4px;">
+            ✦ &nbsp; Certificate of Completion &nbsp; ✦
+          </div>
+          <div style="font-family:'UnifrakturMaguntia',cursive;font-size:2.1em;color:#1E3A8A;line-height:1.1;letter-spacing:.01em;">
+            Python Seekho V.1
+          </div>
+          <div style="font-size:0.58em;color:#475569;font-style:italic;margin-top:2px;">
+            An Interactive Python Programming Initiative by Abraz Baloch
+          </div>
+          <!-- Gold divider line -->
+          <div style="margin:8px auto 0;width:60%;height:2px;background:linear-gradient(90deg,transparent,#B45309,#D97706,#B45309,transparent);"></div>
+        </div>
+
+        <!-- BODY -->
+        <div style="width:100%;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:4px 0;">
+          <p style="font-size:0.68em;color:#475569;margin:0;letter-spacing:.05em;">This Certifies that</p>
+
+          <!-- Student name (live) -->
+          <div id="cert-student-name" style="
+            font-family:'Dancing Script',cursive;
+            font-size:1.75em;font-weight:700;
+            color:#1D4ED8;
+            border-bottom:2px solid #1D4ED8;
+            padding:0 32px 2px;
+            min-width:220px;
+            line-height:1.3;
+          ">Abraz's Python Student</div>
+
+          <!-- Relation line (live) -->
+          <div id="cert-relation-line" style="font-size:0.6em;color:#475569;min-height:1.2em;">
+            <!-- filled by JS -->
+          </div>
+
+          <p style="font-size:0.68em;color:#334155;margin:4px 0 2px;letter-spacing:.03em;">has successfully Completed</p>
+
+          <p style="
+            font-size:0.78em;font-weight:800;
+            color:#1E3A8A;
+            text-transform:uppercase;
+            letter-spacing:.08em;
+            line-height:1.4;
+            max-width:80%;
+          ">Basic to Advance Python Programming<br>(48 Chapters)</p>
+
+          <!-- Score row -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+            <span style="font-size:0.6em;color:#475569;font-style:italic;">Score Achieved:</span>
+            <span id="cert-final-score" style="font-family:'Dancing Script',cursive;font-size:1em;font-weight:700;color:#B45309;">480 Pts</span>
+          </div>
+        </div>
+
+        <!-- FOOTER SIGNATURES -->
+        <div style="width:100%;display:flex;justify-content:space-between;align-items:flex-end;padding:0 20px;">
+          <!-- Left sig -->
+          <div style="text-align:center;min-width:140px;">
+            <div style="font-family:'Dancing Script',cursive;font-size:1.3em;color:#1D4ED8;border-bottom:1.5px solid #1E3A8A;padding-bottom:2px;margin-bottom:3px;">Abraz Baloch</div>
+            <div style="font-size:0.56em;font-weight:700;color:#1E293B;text-transform:uppercase;letter-spacing:.06em;">ABRAZ BALOCH</div>
+            <div style="font-size:0.5em;color:#64748B;font-style:italic;">Instructor &amp; Mentor, Python Seekho</div>
+          </div>
+
+          <!-- Center seal -->
+          <div style="text-align:center;">
+            <div style="
+              width:62px;height:62px;border-radius:50%;
+              border:3px double #1E3A8A;
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+              background:#EFF6FF;
+              font-size:0.46em;color:#1E3A8A;font-weight:800;
+              line-height:1.2;letter-spacing:.01em;
+            ">
+              <div style="font-size:1.6em;line-height:1;">🐍</div>
+              <div>PYTHON</div>
+              <div>SEEKHO</div>
+            </div>
+            <div id="cert-issue-date" style="font-size:0.5em;color:#64748B;margin-top:4px;">2026</div>
+          </div>
+
+          <!-- Right sig -->
+          <div style="text-align:center;min-width:140px;">
+            <div style="font-family:'Dancing Script',cursive;font-size:1.3em;color:#1D4ED8;border-bottom:1.5px solid #1E3A8A;padding-bottom:2px;margin-bottom:3px;">Ask Abraz AI</div>
+            <div style="font-size:0.56em;font-weight:700;color:#1E293B;text-transform:uppercase;letter-spacing:.06em;">ASK ABRAZ AI MENTOR</div>
+            <div style="font-size:0.5em;color:#64748B;font-style:italic;">Curriculum &amp; Assessment Board</div>
+          </div>
+        </div>
+
+      </div><!-- /content wrapper -->
+    </div><!-- /certificate-inner-wrap -->
+
+    <!-- ═══════════════ INPUT FIELDS BELOW CARD ══════════════════ -->
+    <!-- Progress Gate (shown when locked) -->
+    <div id="cert-progress-gate" style="display:none;margin-top:10px;padding:10px 12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;"></div>
+
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;justify-content:space-between;background:oklch(var(--b2));padding:12px;border-radius:12px;border:1px solid oklch(var(--b3));">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:0;">
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:130px;">
+          <label style="font-size:0.68rem;font-weight:700;opacity:.6;">🎓 Student Name</label>
+          <input type="text" id="cert-name-input" placeholder="Apna naam likhein..."
+            class="input input-xs input-bordered font-semibold"
+            oninput="updateCertificateName(this.value)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:70px;">
+          <label style="font-size:0.68rem;font-weight:700;opacity:.6;">Relation</label>
+          <select id="cert-relation-select" class="select select-xs select-bordered" onchange="updateCertRelation()">
+            <option value="">—</option>
+            <option value="S/o">S/o</option>
+            <option value="D/o">D/o</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:130px;">
+          <label style="font-size:0.68rem;font-weight:700;opacity:.6;">Father's Name</label>
+          <input type="text" id="cert-father-input" placeholder="Walid ka naam..."
+            class="input input-xs input-bordered font-semibold"
+            oninput="updateCertRelation()" />
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        <button class="btn btn-sm btn-primary font-bold gap-1" id="cert-download-btn" onclick="downloadCertificatePDF()">
+          � Download PDF
+        </button>
+        <button class="btn btn-sm btn-outline" id="close-cert-btn">Band Karein</button>
       </div>
     </div>
 
-    <!-- Customize Student Name & Certificate Actions -->
-    <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-300/40 p-3 rounded-xl border border-base-300">
-      <div class="flex items-center gap-2 w-full sm:w-auto">
-        <span class="text-xs font-bold whitespace-nowrap">🎓 Student Name:</span>
-        <input type="text" id="cert-name-input" placeholder="Apna naam likhein..." 
-          class="input input-xs input-bordered flex-1 sm:w-48 font-semibold"
-          oninput="updateCertificateName(this.value)" />
-      </div>
-      <div class="flex items-center justify-end gap-2 w-full sm:w-auto">
-        <button class="btn btn-sm btn-primary font-bold" onclick="window.print()">
-          🖨️ Print / Save PDF
-        </button>
-        <button class="btn btn-sm btn-outline" id="close-cert-btn">
-          Band Karein
-        </button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -1557,6 +1838,8 @@ let appState = {
   currentChapterTab: 'learn',
   completedChapters: new Set(),
   quizAnswers: {},
+  quizBestScores: {},   // { chIdx: { correct: N, total: N, pts: N } } — permanent record
+  retakeMode: {},       // { chIdx: true } — active practice retakes (not persisted)
   totalScore: 0,
   soundEnabled: true,
   geminiApiKey: '',
@@ -1577,6 +1860,7 @@ function loadPersistedData() {
       const parsed = JSON.parse(raw);
       if (parsed.completed) appState.completedChapters = new Set(parsed.completed);
       if (parsed.quizAnswers) appState.quizAnswers = parsed.quizAnswers;
+      if (parsed.quizBestScores) appState.quizBestScores = parsed.quizBestScores;
       if (parsed.totalScore !== undefined) appState.totalScore = parsed.totalScore;
       if (parsed.currentChapterIdx !== undefined) appState.currentChapterIdx = parsed.currentChapterIdx;
       if (parsed.studentName) appState.studentName = parsed.studentName;
@@ -1604,6 +1888,7 @@ function persistData() {
     const data = {
       completed: Array.from(appState.completedChapters),
       quizAnswers: appState.quizAnswers,
+      quizBestScores: appState.quizBestScores,
       totalScore: appState.totalScore,
       currentChapterIdx: appState.currentChapterIdx,
       studentName: appState.studentName,
@@ -2297,6 +2582,265 @@ function loadChapterToNotebook(idx) {
 // ==================== 6. GEMINI AI ASSISTANT & REASONING MODE ENGINE ====================
 let aiChatHistory = [];
 
+// ==================== PROVIDER AUTO-DETECTION ====================
+const AI_PROVIDERS = {
+  gemini: {
+    name: 'Google Gemini',
+    icon: '✨',
+    color: 'text-info',
+    modelInstant:  'gemini-2.5-flash',
+    modelThinking: 'gemini-2.5-pro',
+    test: k => /^AIza/.test(k)
+  },
+  openai: {
+    name: 'OpenAI',
+    icon: '🤖',
+    color: 'text-success',
+    modelInstant:  'gpt-4o-mini',
+    modelThinking: 'gpt-4o',
+    test: k => /^sk-proj-/.test(k) || (/^sk-/.test(k) && !/^sk-ant-/.test(k) && !/^sk-or-/.test(k))
+  },
+  groq: {
+    name: 'Groq',
+    icon: '⚡',
+    color: 'text-warning',
+    modelInstant:  'llama-3.3-70b-versatile',
+    modelThinking: 'deepseek-r1-distill-llama-70b',
+    test: k => /^gsk_/.test(k)
+  },
+  anthropic: {
+    name: 'Anthropic Claude',
+    icon: '🧠',
+    color: 'text-secondary',
+    modelInstant:  'claude-3-5-haiku-latest',
+    modelThinking: 'claude-3-7-sonnet-latest',
+    test: k => /^sk-ant-/.test(k)
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    icon: '🔀',
+    color: 'text-accent',
+    modelInstant:  'google/gemini-2.5-flash',
+    modelThinking: 'meta-llama/llama-3.3-70b-instruct',
+    test: k => /^sk-or-/.test(k)
+  }
+};
+
+function detectProvider(key) {
+  if (!key) return null;
+  const k = key.trim();
+  for (const [id, p] of Object.entries(AI_PROVIDERS)) {
+    if (p.test(k)) return { id, ...p };
+  }
+  return null;
+}
+
+function getProviderModel(provider, mode) {
+  if (!provider) return 'gemini-2.5-flash';
+  return mode === 'thinking' ? provider.modelThinking : provider.modelInstant;
+}
+
+// ==================== RAG ENGINE ====================
+// Build a lightweight in-memory keyword index across all 48 chapters
+// Called once after chaptersData is available (see initRagIndex())
+let _ragIndex = null;
+
+function initRagIndex() {
+  if (_ragIndex) return;
+  _ragIndex = chaptersData.map(ch => {
+    // Gather all searchable text from the chapter
+    const textParts = [
+      ch.title,
+      ch.subtitle || '',
+      ch.tier || '',
+      (ch.learn?.intro || '').replace(/<[^>]+>/g, ''),
+      ...(ch.learn?.points || []).map(p => `${p.heading} ${p.text} ${p.highlight || ''}`),
+      ...(ch.learn?.examples || []).map(e => `${e.title || ''} ${e.code || ''}`),
+      ...(ch.practice || []).map(p => `${p.title} ${p.desc}`),
+      ...(ch.quiz || []).map(q => `${q.q} ${(q.options || []).join(' ')}`)
+    ];
+    const fullText = textParts.join(' ').toLowerCase();
+    // Extract keywords (words >= 3 chars, stripped of HTML)
+    const keywords = [...new Set(fullText.match(/[a-z_]{3,}/g) || [])];
+    return { ch, keywords, fullText };
+  });
+}
+
+// Fuzzy-ish token overlap: returns a similarity score 0..N
+function ragScore(queryTokens, entry) {
+  let score = 0;
+  for (const qt of queryTokens) {
+    if (qt.length < 2) continue;
+    for (const kw of entry.keywords) {
+      if (kw === qt)              { score += 4; break; }
+      if (kw.startsWith(qt))     { score += 2; break; }
+      if (qt.startsWith(kw) && kw.length >= 4) { score += 2; break; }
+      // Simple 1-char typo tolerance: share first 3 chars
+      if (qt.length >= 4 && kw.length >= 4 && qt.slice(0, 3) === kw.slice(0, 3)) { score += 1; break; }
+    }
+  }
+  return score;
+}
+
+// Return top-K most relevant chapters for a query string
+function ragSearch(query, topK = 3) {
+  initRagIndex();
+  const tokens = query.toLowerCase().match(/[a-z_]{2,}/g) || [];
+  const scored = _ragIndex.map(entry => ({ ch: entry.ch, score: ragScore(tokens, entry) }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored.filter(r => r.score > 0).slice(0, topK).map(r => r.ch);
+}
+
+// Build the rich context string to inject into the system prompt
+function buildRagContext(query) {
+  const currentCh = chaptersData[appState.currentChapterIdx] || chaptersData[0];
+  const topChapters = ragSearch(query, 3);
+
+  // Always include current chapter; merge with RAG results (deduplicate by id)
+  const seen = new Set();
+  const relevant = [currentCh, ...topChapters].filter(ch => {
+    if (seen.has(ch.id)) return false;
+    seen.add(ch.id);
+    return true;
+  }).slice(0, 4);
+
+  // Also grab any code currently in practice editor
+  let editorCode = '';
+  const practiceEl = document.querySelector('.code-editor-textarea');
+  if (practiceEl && practiceEl.value && practiceEl.value.trim()) {
+    editorCode = `\nStudent ka abhi ka code (Practice Editor):\n\`\`\`python\n${practiceEl.value.trim()}\n\`\`\`\n`;
+  }
+
+  const ctxParts = relevant.map(ch => {
+    const ex = ch.learn?.examples?.[0];
+    const pts = (ch.learn?.points || []).map(p => `  • ${p.heading}: ${p.text.replace(/<[^>]+>/g, '')}`).join('\n');
+    return `--- Chapter ${ch.id}: ${ch.title} (${ch.subtitle || ''}) ---
+${(ch.learn?.intro || '').replace(/<[^>]+>/g, '')}
+${pts}${ex ? `\nMisaal:\n\`\`\`python\n${ex.code}\n\`\`\`` : ''}`;
+  });
+
+  return `Matlab wale chapters:\n${ctxParts.join('\n\n')}${editorCode}`;
+}
+
+// ==================== PROVIDER-AWARE API DISPATCHER ====================
+// Calls the right provider endpoint based on the detected key prefix
+async function callProviderApi(prompt, systemContext, isTestPing, mode) {
+  const rawKey = (appState.geminiApiKey || '').replace(/['"\s]/g, '');
+  const provider = detectProvider(rawKey);
+
+  if (!rawKey || !provider) {
+    return generateOfflineAiResponse(prompt, systemContext, mode);
+  }
+
+  // Auto-select model based on provider + mode (unless user manually set one)
+  const model = appState._userPickedModel
+    ? (appState.geminiModel || getProviderModel(provider, mode))
+    : getProviderModel(provider, mode);
+
+  if (provider.id === 'gemini') {
+    return callGeminiApi(prompt, systemContext, isTestPing, mode);
+  } else if (provider.id === 'openai' || provider.id === 'groq' || provider.id === 'openrouter') {
+    return callOpenAICompatibleApi(rawKey, provider, model, prompt, systemContext, isTestPing, mode);
+  } else if (provider.id === 'anthropic') {
+    return callAnthropicApi(rawKey, model, prompt, systemContext, isTestPing, mode);
+  }
+  return callGeminiApi(prompt, systemContext, isTestPing, mode);
+}
+
+// OpenAI-compatible endpoint (OpenAI, Groq, OpenRouter)
+async function callOpenAICompatibleApi(key, provider, model, prompt, context, isTestPing, mode) {
+  const ENDPOINTS = {
+    openai:     'https://api.openai.com/v1/chat/completions',
+    groq:       'https://api.groq.com/openai/v1/chat/completions',
+    openrouter: 'https://openrouter.ai/api/v1/chat/completions'
+  };
+  const endpoint = ENDPOINTS[provider.id];
+  const modeDirective = mode === 'thinking'
+    ? 'Pehle apni soch andar rakhein, phir comprehensive Roman Urdu + Python solution dein.'
+    : 'Directly aur concisely jawab dein, bilkul bhi filler mat likhein.';
+
+  const systemMsg = `Aap Ask Abraz hain — ek expert aur mehربaan AI Python mentor jo Pakistani students ko Roman Urdu aur clear English mein padhate hain. Abraz Baloch ne banaya (AI Developer & SMIT Mentee).
+${modeDirective}
+Hamesha code Markdown code blocks mein likhein.
+${context ? `\nContext:\n${context}` : ''}`;
+
+  const messages = isTestPing
+    ? [{ role: 'user', content: 'Reply with: OK' }]
+    : [
+        { role: 'system', content: systemMsg },
+        ...aiChatHistory.slice(-6).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
+        { role: 'user', content: prompt }
+      ];
+
+  const body = { model, messages };
+  if (!isTestPing) {
+    body.temperature = mode === 'thinking' ? 0.7 : 0.6;
+    body.max_tokens = mode === 'thinking' ? 4096 : 2048;
+  }
+
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` };
+  if (provider.id === 'openrouter') {
+    headers['HTTP-Referer'] = 'https://python-seekho.vercel.app';
+    headers['X-Title'] = 'Python Seekho';
+  }
+
+  try {
+    const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const reply = data.choices?.[0]?.message?.content || 'OK';
+      if (!isTestPing) {
+        aiChatHistory.push({ role: 'user', text: prompt, mode });
+        aiChatHistory.push({ role: 'model', text: reply, mode });
+      }
+      return reply;
+    }
+    const errMsg = data.error?.message || `HTTP ${res.status}`;
+    return `⚠️ **${provider.name} Error:** ${errMsg}`;
+  } catch (e) {
+    return `⚠️ **Network Error (${provider.name}):** ${e.message}`;
+  }
+}
+
+// Anthropic Claude endpoint
+async function callAnthropicApi(key, model, prompt, context, isTestPing, mode) {
+  const systemContent = `Aap Ask Abraz hain — ek expert AI Python mentor (Roman Urdu + English). Abraz Baloch ne banaya.
+${mode === 'thinking' ? 'Gehri soch ke sath comprehensive jawab dein.' : 'Fast aur direct jawab dein.'}
+Hamesha code Markdown blocks mein likhein.${context ? `\n\nContext:\n${context}` : ''}`;
+
+  const messages = isTestPing
+    ? [{ role: 'user', content: 'Reply with: OK' }]
+    : [
+        ...aiChatHistory.slice(-6).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
+        { role: 'user', content: prompt }
+      ];
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({ model, messages, system: systemContent, max_tokens: mode === 'thinking' ? 4096 : 2048 })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const reply = data.content?.[0]?.text || 'OK';
+      if (!isTestPing) {
+        aiChatHistory.push({ role: 'user', text: prompt, mode });
+        aiChatHistory.push({ role: 'model', text: reply, mode });
+      }
+      return reply;
+    }
+    return `⚠️ **Anthropic Claude Error:** ${data.error?.message || `HTTP ${res.status}`}`;
+  } catch (e) {
+    return `⚠️ **Network Error (Anthropic):** ${e.message}`;
+  }
+}
+
 const VALID_AI_MODES = ['instant', 'thinking'];
 
 const FALLBACK_GEMINI_MODELS = [
@@ -2574,49 +3118,50 @@ Always format code in standard Markdown code blocks.`;
   return `⚠️ **Live Gemini API Error:** ${lastErrorMsg}\n\nBaraye meharbani **Settings (⚙️)** khol kar apni Google AI Studio API key check karein.`;
 }
 
-// Curriculum-Aware Local Assistant (No generic canned "Instant Mode" boilerplate!)
-function generateOfflineAiResponse(prompt, context, mode = 'thinking') {
-  const p = prompt.toLowerCase().trim();
+// Curriculum-Aware Local Assistant — RAG-powered offline mode
+function generateOfflineAiResponse(prompt, context, mode) {
+  mode = mode || 'thinking';
+  var p = prompt.toLowerCase().trim();
 
-  // 1. Search chaptersData for matching Python topic
-  let bestChapter = null;
-  let bestScore = 0;
-  for (const ch of chaptersData) {
-    let score = 0;
-    const titleWords = ch.title.toLowerCase().split(/[^a-z0-9_]+/).filter(w => w.length > 2);
-    for (const w of titleWords) {
-      if (p.includes(w)) score += 3;
-    }
-    if (p.includes(ch.title.toLowerCase())) score += 8;
-    if (score > bestScore) {
-      bestScore = score;
-      bestChapter = ch;
-    }
+  // Try RAG search first (top 2 matches)
+  initRagIndex();
+  var topMatches = ragSearch(prompt, 2);
+  // Also check if user asked about current lesson
+  var isCurrentQ = /current|lesson samjhao|abhi|yahan|chapter|is topic/.test(p);
+  var curCh = chaptersData[appState.currentChapterIdx] || chaptersData[0];
+  if (isCurrentQ && !topMatches.find(function(c){ return c.id === curCh.id; })) {
+    topMatches.unshift(curCh);
   }
 
-  // If student asks about "current lesson" / "lesson samjhao"
-  if (p.includes('current') || p.includes('lesson samjhao') || p.includes('chapter')) {
-    bestChapter = chaptersData[appState.currentChapterIdx] || chaptersData[0];
-    bestScore = 10;
+  if (topMatches.length > 0) {
+    var parts = topMatches.slice(0, 2).map(function(ch) {
+      var ex = ch.learn && ch.learn.examples && ch.learn.examples[0];
+      var pts = ((ch.learn && ch.learn.points) || [])
+        .map(function(pt){ return '**' + pt.heading + ':** ' + pt.text.replace(/<[^>]+>/g, ''); })
+        .join('\n\n');
+      var intro = ((ch.learn && ch.learn.intro) || '').replace(/<[^>]+>/g, '');
+      var exBlock = ex ? ('\n\n**Misaal:**\n```python\n' + ex.code + '\n```') : '';
+      return '### Ch ' + ch.id + ': ' + ch.title + '\n*' + (ch.subtitle || '') + '*\n\n' + intro + '\n\n' + pts + exBlock;
+    });
+
+    var matchedNames = topMatches.slice(0, 2).map(function(c){ return 'Ch ' + c.id + ': ' + c.title; }).join(', ');
+    var banner = '\n\n---\n> Aur gehri wazahat ke liye — AI drawer mein ap ki ⚙️ tap karein aur apni free API key paste karein (Google Gemini, Groq, OpenAI, ya Anthropic — sab supported hain).\n> *Abhi: ' + matchedNames + ' se relevant content dikha raha hun.*';
+
+    return parts.join('\n\n---\n\n') + banner;
   }
 
-  if (bestChapter && bestScore >= 3) {
-    const ex = bestChapter.learn.examples[0];
-    const pts = bestChapter.learn.points.map(pt => `- **${pt.heading}:** ${pt.text}`).join('\n');
-    return `### 📖 ${bestChapter.title} (${bestChapter.subtitle})\n\n${bestChapter.learn.intro.replace(/<[^>]+>/g, '')}\n\n${pts}\n\n\`\`\`python\n${ex ? ex.code : ''}\n\`\`\``;
+  // Fallback: special pattern matches
+  if (/farq|difference|list.*tuple|tuple.*list/.test(p)) {
+    return '### List vs Tuple vs Dictionary\n\n1. **List `[ ]`** — Mutable hai (items add/delete ho sakte hain)\n2. **Tuple `( )`** — Immutable hai (banane ke baad change nahi hoti)\n3. **Dictionary `{ }`** — Key-value pairs hote hain (fast lookup ke liye)\n\n---\n> Ghahri comparison ke liye ⚙️ mein apni API key add karein.';
+  }
+  if (/challenge|task|practice/.test(p)) {
+    var pr = curCh.practice && curCh.practice[0];
+    return '### Practice: ' + (pr ? pr.title : curCh.title) + '\n\n' + (pr ? pr.desc : '') + '\n```python\n' + (pr ? pr.starter : 'print("Hello Python!")') + '\n```';
   }
 
-  if (p.includes("farq") || p.includes("difference") || p.includes("list vs tuple")) {
-    return `### 📋 List vs Tuple vs Dictionary\n\n1. **List \`[ ]\`**: Mutable hoti hai (items add/delete ho sakte hain).\n2. **Tuple \`( )\`**: Immutable hoti hai (banne ke baad change nahi ho sakti).\n3. **Dictionary \`{ }\`**: Key-Value pairs hoti hain (fast lookup ke liye best).`;
-  }
-
-  if (p.includes("challenge") || p.includes("task") || p.includes("quiz")) {
-    const cur = chaptersData[appState.currentChapterIdx] || chaptersData[0];
-    const pr = cur.practice && cur.practice[0];
-    return `### 🎯 Practice Challenge: ${pr ? pr.title : cur.title}\n\n${pr ? pr.desc : 'Is code ko chala kar dekhein:'}\n\n\`\`\`python\n${pr ? pr.starter : 'print("Hello Python!")'}\n\`\`\``;
-  }
-
-  return `🔑 **Live AI जवाब के लिए API Key सेट करें:**\n\nApne har sawal ka live जवाब hasil karne ke liye upar **⚙️ API Key** button par click karein aur apni free [Google AI Studio](https://aistudio.google.com/app/apikey) key paste karke **Save** karein.`;
+  // Generic no-match response (clean Roman Urdu, no Devanagari)
+  var shortQ = prompt.length > 60 ? prompt.slice(0, 60) + '...' : prompt;
+  return '### "' + shortQ + '"\n\nIs topic ka mujhe seedha match nahi mila course ke 48 chapters mein.\n\nAap ye try karein:\n- **Keyword aur short karo** (jaise: *"list slicing"*, *"for loop"*, *"oop"*)\n- **Chapter sidebar** mein directly dhoondein\n\n---\n> **Live AI jawab ke liye:** AI drawer mein ⚙️ click karein aur apni free API key paste karein.\n> Google AI Studio (Gemini), Groq, OpenAI aur Anthropic — sab support karte hain.';
 }
 
 function appendAiMessage(containerId, role, text, modeUsed = null) {
@@ -2675,10 +3220,11 @@ async function handleAiSubmit(inputEl, containerId, extraContext = "") {
 
   const requestMode = validateAiResponseMode(appState.aiResponseMode);
   appendAiMessage(containerId, 'user', query, requestMode);
-  
-  const currentCh = chaptersData[appState.currentChapterIdx];
-  const context = `Current Lesson: ${currentCh ? currentCh.title : 'General'}\n${extraContext}`;
-  
+
+  // Build rich RAG context: top-3 relevant chapters + current chapter + editor code
+  const ragContext = buildRagContext(query);
+  const context = extraContext ? `${ragContext}\n${extraContext}` : ragContext;
+
   const loadingIndicatorId = 'ai-loading-' + Date.now();
   const container = document.getElementById(containerId);
   const loadingDiv = document.createElement('div');
@@ -2693,7 +3239,7 @@ async function handleAiSubmit(inputEl, containerId, extraContext = "") {
   container.appendChild(loadingDiv);
   container.scrollTop = container.scrollHeight;
 
-  const reply = await callGeminiApi(query, context, false, requestMode);
+  const reply = await callProviderApi(query, context, false, requestMode);
   const loadingEl = document.getElementById(loadingIndicatorId);
   if (loadingEl) loadingEl.remove();
 
@@ -2838,17 +3384,78 @@ function renderCourseSidebar(filter = "") {
   updateProgressDisplay();
 }
 
+// Rank tiers
+const RANK_TIERS = [
+  { min:0,   icon:'🥚', label:'Pehla Qadam'    },
+  { min:50,  icon:'🐣', label:'Python Seedha'  },
+  { min:150, icon:'🐍', label:'Python Explorer'},
+  { min:300, icon:'⚡', label:'Code Ninja'     },
+  { min:500, icon:'🚀', label:'Script Master'  },
+  { min:800, icon:'🏆', label:'Python Champion'},
+];
+function getRank(pts) {
+  let r = RANK_TIERS[0];
+  for (const t of RANK_TIERS) { if (pts >= t.min) r = t; }
+  return r;
+}
+
 function updateProgressDisplay() {
   const completedCount = appState.completedChapters.size;
   const total = chaptersData.length;
-  const pb = document.getElementById('course-progress-bar');
-  const txt = document.getElementById('progress-text');
-  const pBadge = document.getElementById('points-badge');
+  const pct   = Math.round((completedCount / total) * 100);
+  const pts   = appState.totalScore;
 
-  if (pb) pb.value = completedCount;
-  if (txt) txt.textContent = `${completedCount} / ${total} Complete (${Math.round((completedCount/total)*100)}%)`;
-  if (pBadge) pBadge.textContent = `⭐ ${appState.totalScore} pts`;
+  // Sidebar bar + text
+  const pb  = document.getElementById('course-progress-bar');
+  const txt = document.getElementById('progress-text');
+  if (pb)  pb.value = completedCount;
+  if (txt) txt.textContent = `${completedCount} / ${total} Complete (${pct}%)`;
+
+  // Pill text
+  const pillTxt = document.getElementById('pill-pts-text');
+  if (pillTxt) pillTxt.textContent = `${pts} pts`;
+
+  // SVG ring (circumference = 2π×8 ≈ 50.27)
+  const arc = document.getElementById('pill-ring-arc');
+  if (arc) {
+    const C = 50.27;
+    arc.setAttribute('stroke-dashoffset', (C - (pct / 100) * C).toFixed(2));
+  }
+
+  // Popover values (update silently; popover may be hidden)
+  const popCh    = document.getElementById('pop-ch-count');
+  const popBar   = document.getElementById('pop-ch-bar');
+  const popPct   = document.getElementById('pop-ch-pct');
+  const popPts   = document.getElementById('pop-pts');
+  const popIcon  = document.getElementById('pop-rank-icon');
+  const popLabel = document.getElementById('pop-rank-label');
+  if (popCh)    popCh.textContent   = `${completedCount} / ${total}`;
+  if (popBar)   popBar.style.width  = `${pct}%`;
+  if (popPct)   popPct.textContent  = `${pct}%`;
+  if (popPts)   popPts.textContent  = `⭐ ${pts} pts`;
+  const rank = getRank(pts);
+  if (popIcon)  popIcon.textContent  = rank.icon;
+  if (popLabel) popLabel.textContent = rank.label;
 }
+
+let _popoverOpen = false;
+function toggleProgressPopover() {
+  const pop = document.getElementById('progress-popover');
+  if (!pop) return;
+  _popoverOpen = !_popoverOpen;
+  pop.style.display = _popoverOpen ? 'block' : 'none';
+  if (_popoverOpen) updateProgressDisplay();
+}
+// Close popover on outside click
+document.addEventListener('click', e => {
+  if (!_popoverOpen) return;
+  const wrap = document.getElementById('progress-pill-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    _popoverOpen = false;
+    const pop = document.getElementById('progress-popover');
+    if (pop) pop.style.display = 'none';
+  }
+}, true);
 
 function loadChapter(idx, forceTab = 'learn') {
   if (idx < 0 || idx >= chaptersData.length) return;
@@ -3006,65 +3613,212 @@ function togglePracticeHint(idx, pIdx) {
 
 function renderChapterQuiz(ch, idx) {
   const container = document.getElementById('ch-tab-quiz');
+  const isCompleted  = appState.completedChapters.has(idx);
+  const isPractice   = !!appState.retakeMode[idx];
+  const best         = appState.quizBestScores[idx];
   let html = '';
 
-  ch.quiz.forEach((q, qIdx) => {
-    const savedAns = appState.quizAnswers[`${idx}-${qIdx}`];
+  // ── Status banner (shown on completed chapters) ─────────────────
+  if (isCompleted && best) {
+    if (isPractice) {
+      html += `
+        <div class="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-semibold"
+             style="background:oklch(var(--p)/0.1);border:1px solid oklch(var(--p)/0.3);color:oklch(var(--p));">
+          🔄 <span>Practice Mode</span>
+          <span class="ml-auto opacity-60 font-normal">Progress &amp; Points Saved — Retake freely</span>
+        </div>`;
+    } else {
+      html += `
+        <div class="flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-xl mb-3 text-xs"
+             style="background:oklch(var(--su)/0.1);border:1px solid oklch(var(--su)/0.3);">
+          <span class="font-bold text-success">✅ Chapter Completed</span>
+          <span class="opacity-60">•</span>
+          <span class="opacity-70">Best Score: <strong>${best.correct}/${best.total}</strong></span>
+          <span class="opacity-60">•</span>
+          <span class="font-mono text-warning text-[11px]">+${best.pts} pts (Locked)</span>
+          <button onclick="startRetakeMode(${idx})"
+            class="ml-auto btn btn-xs btn-outline gap-1 font-bold"
+            style="border-color:oklch(var(--p)/0.5);color:oklch(var(--p));">
+            🔄 Retake Quiz (Practice)
+          </button>
+        </div>`;
+    }
+  }
+
+  // ── Questions ────────────────────────────────────────────────────
+  // In practice mode use shuffled order stored on retakeMode, else original
+  const questionOrder = (isPractice && appState.retakeMode[idx]?.order)
+    ? appState.retakeMode[idx].order
+    : ch.quiz.map((_, i) => i);
+
+  questionOrder.forEach((qIdx, displayNum) => {
+    const q = ch.quiz[qIdx];
+    // In practice mode use temp answers; in normal mode use persisted answers
+    const savedAns = isPractice
+      ? (appState.retakeMode[idx]?.answers?.[qIdx])
+      : appState.quizAnswers[`${idx}-${qIdx}`];
+
+    // Build shuffled option order for practice mode
+    const optOrder = (isPractice && appState.retakeMode[idx]?.optOrder?.[qIdx])
+      ? appState.retakeMode[idx].optOrder[qIdx]
+      : q.options.map((_, i) => i);
+
     html += `
-      <div class="concept-box">
-        <h3 class="text-secondary"><span>❓ Sawaal ${qIdx + 1}</span></h3>
+      <div class="concept-box" id="q-wrap-${idx}-${qIdx}">
+        <h3 class="text-secondary"><span>❓ Sawaal ${displayNum + 1}</span></h3>
         <p class="font-semibold mb-3">${q.q}</p>
         <div class="space-y-2">
-          ${q.options.map((opt, optIdx) => {
+          ${optOrder.map((optIdx) => {
             let cls = 'quiz-opt-btn';
             if (savedAns !== undefined) {
               if (optIdx === q.correct) cls += ' correct';
               else if (optIdx === savedAns) cls += ' wrong';
             }
-            return `<button class="${cls}" id="q-btn-${idx}-${qIdx}-${optIdx}" 
-              onclick="submitQuizAnswer(${idx}, ${qIdx}, ${optIdx})" ${savedAns !== undefined ? 'disabled' : ''}>
-              ${opt}
+            return `<button class="${cls}" id="q-btn-${idx}-${qIdx}-${optIdx}"
+              onclick="submitQuizAnswer(${idx}, ${qIdx}, ${optIdx})"
+              ${savedAns !== undefined ? 'disabled' : ''}>
+              ${q.options[optIdx]}
             </button>`;
           }).join('')}
         </div>
-        <div class="p-3 rounded-lg text-xs mt-3 ${savedAns !== undefined ? (savedAns === q.correct ? 'bg-success/10 text-success border border-success/30' : 'bg-error/10 text-error border border-error/30') : 'hidden'}" id="q-fb-${idx}-${qIdx}">
+        <div class="p-3 rounded-lg text-xs mt-3 ${savedAns !== undefined
+            ? (savedAns === q.correct ? 'bg-success/10 text-success border border-success/30'
+                                      : 'bg-error/10 text-error border border-error/30')
+            : 'hidden'}" id="q-fb-${idx}-${qIdx}">
           ${savedAns !== undefined ? (savedAns === q.correct ? '✅ Sahi Jawab! ' : '❌ Galat! ') + q.exp : ''}
         </div>
-      </div>
-    `;
+      </div>`;
   });
 
-  const isCompleted = appState.completedChapters.has(idx);
-  html += `
-    <div class="concept-box text-center p-6 bg-base-300/40" id="ch-finish-box">
-      <h3 class="justify-center text-lg font-black text-warning">
-        ${isCompleted ? '🌟 Chapter Complete!' : '🏆 Chapter Finish'}
-      </h3>
-      <p class="text-xs text-base-content/60 mb-4">Tamam sawalat hal karne ke baad agla chapter unlock ho jata hai.</p>
-      <button class="btn btn-primary btn-wide font-bold" onclick="completeChapterAction(${idx})">
-        ${idx < chaptersData.length - 1 ? '✅ Agla Chapter Shuru Karo →' : '🎓 Certificate Hasil Karo! 🏆'}
-      </button>
-    </div>
-  `;
+  // ── Finish box ───────────────────────────────────────────────────
+  if (!isPractice) {
+    html += `
+      <div class="concept-box text-center p-6 bg-base-300/40" id="ch-finish-box">
+        <h3 class="justify-center text-lg font-black text-warning">
+          ${isCompleted ? '🌟 Chapter Complete!' : '🏆 Chapter Finish'}
+        </h3>
+        <p class="text-xs text-base-content/60 mb-4">Tamam sawalat hal karne ke baad agla chapter unlock ho jata hai.</p>
+        <button class="btn btn-primary btn-wide font-bold" onclick="completeChapterAction(${idx})">
+          ${idx < chaptersData.length - 1 ? '✅ Agla Chapter Shuru Karo →' : '🎓 Certificate Hasil Karo! 🏆'}
+        </button>
+      </div>`;
+  } else {
+    html += `
+      <div class="concept-box text-center p-4 bg-base-300/40" id="ch-finish-box">
+        <p class="text-xs font-semibold text-base-content/60 mb-3">Practice session mukammal! Progress محفوظ ہے۔</p>
+        <button class="btn btn-sm btn-outline gap-1" onclick="startRetakeMode(${idx})">
+          🔄 Dobara Shuffle Karein
+        </button>
+        <button class="btn btn-sm btn-ghost ml-2" onclick="exitRetakeMode(${idx})">
+          ✅ Normal View
+        </button>
+      </div>`;
+  }
+
   container.innerHTML = html;
 }
 
+// Start a practice retake: shuffles questions + options, clears temp answers
+function startRetakeMode(idx) {
+  const ch = chaptersData[idx];
+  if (!ch) return;
+
+  // Fisher-Yates shuffle helper
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  const qOrder = shuffle(ch.quiz.map((_, i) => i));
+  const optOrder = {};
+  ch.quiz.forEach((q, qi) => { optOrder[qi] = shuffle(q.options.map((_, i) => i)); });
+
+  appState.retakeMode[idx] = { order: qOrder, optOrder, answers: {} };
+  renderChapterQuiz(ch, idx);
+  showToast('🔄 Practice Mode — Questions shuffled! Progress safe hai.', 'info');
+}
+
+// Exit retake: go back to locked normal view
+function exitRetakeMode(idx) {
+  delete appState.retakeMode[idx];
+  renderChapterQuiz(chaptersData[idx], idx);
+}
+
 function submitQuizAnswer(chIdx, qIdx, optIdx) {
+  const isPractice = !!appState.retakeMode[chIdx];
   const key = `${chIdx}-${qIdx}`;
-  if (appState.quizAnswers[key] !== undefined) return;
-  appState.quizAnswers[key] = optIdx;
+
+  // Guard: don't re-answer
+  if (!isPractice && appState.quizAnswers[key] !== undefined) return;
+  if (isPractice && appState.retakeMode[chIdx].answers[qIdx] !== undefined) return;
 
   const q = chaptersData[chIdx].quiz[qIdx];
   const isCorrect = optIdx === q.correct;
 
-  if (isCorrect) {
-    appState.totalScore += 10;
-    playAudioEffect('correct');
-    showToast('⭐ Sahi jawab! +10 Points', 'success');
+  if (isPractice) {
+    // --- PRACTICE MODE: temp answer, no score/progress change ---
+    appState.retakeMode[chIdx].answers[qIdx] = optIdx;
+
+    if (isCorrect) {
+      playAudioEffect('correct');
+      showToast('✅ Sahi! (Practice Mode — pts already saved)', 'info');
+    } else {
+      playAudioEffect('wrong');
+      showToast('❌ Galat! Try again next shuffle.', 'info');
+    }
+
+    // Check if all practice questions answered → check for new high score
+    const allAnswered = chaptersData[chIdx].quiz.every((_, qi) =>
+      appState.retakeMode[chIdx].answers[qi] !== undefined
+    );
+    if (allAnswered) {
+      const correctCount = chaptersData[chIdx].quiz.filter((qx, qi) =>
+        appState.retakeMode[chIdx].answers[qi] === qx.correct
+      ).length;
+      const best = appState.quizBestScores[chIdx];
+      if (best && correctCount > best.correct) {
+        const diff = (correctCount - best.correct) * 10;
+        appState.totalScore += diff;
+        appState.quizBestScores[chIdx] = { correct: correctCount, total: chaptersData[chIdx].quiz.length, pts: best.pts + diff };
+        persistData();
+        updateProgressDisplay();
+        showToast(`🏆 New Best Score! ${correctCount}/${chaptersData[chIdx].quiz.length} — +${diff} bonus pts!`, 'success');
+        if (window.confetti) confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 } });
+      }
+    }
   } else {
-    playAudioEffect('wrong');
+    // --- NORMAL MODE: permanent save ---
+    appState.quizAnswers[key] = optIdx;
+
+    if (isCorrect) {
+      appState.totalScore += 10;
+      playAudioEffect('correct');
+      showToast('⭐ Sahi jawab! +10 Points', 'success');
+    } else {
+      playAudioEffect('wrong');
+    }
+
+    // Check if this chapter's quiz is now fully answered → record best score
+    const allAnswered = chaptersData[chIdx].quiz.every((_, qi) =>
+      appState.quizAnswers[`${chIdx}-${qi}`] !== undefined
+    );
+    if (allAnswered && !appState.quizBestScores[chIdx]) {
+      const correctCount = chaptersData[chIdx].quiz.filter((qx, qi) =>
+        appState.quizAnswers[`${chIdx}-${qi}`] === qx.correct
+      ).length;
+      const ptsEarned = correctCount * 10;
+      appState.quizBestScores[chIdx] = { correct: correctCount, total: chaptersData[chIdx].quiz.length, pts: ptsEarned };
+    }
+
+    persistData();
+    updateProgressDisplay();
   }
 
+  // ── UI: reveal answer on the buttons ───────────────────────────
   q.options.forEach((_, oi) => {
     const btn = document.getElementById(`q-btn-${chIdx}-${qIdx}-${oi}`);
     if (btn) {
@@ -3076,13 +3830,12 @@ function submitQuizAnswer(chIdx, qIdx, optIdx) {
 
   const fb = document.getElementById(`q-fb-${chIdx}-${qIdx}`);
   if (fb) {
-    fb.className = `p-3 rounded-lg text-xs mt-3 ${isCorrect ? 'bg-success/10 text-success border border-success/30' : 'bg-error/10 text-error border border-error/30'}`;
+    fb.className = `p-3 rounded-lg text-xs mt-3 ${isCorrect
+      ? 'bg-success/10 text-success border border-success/30'
+      : 'bg-error/10 text-error border border-error/30'}`;
     fb.innerHTML = (isCorrect ? '✅ Sahi Jawab! ' : '❌ Galat! ') + q.exp;
     fb.classList.remove('hidden');
   }
-
-  persistData();
-  updateProgressDisplay();
 }
 
 function completeChapterAction(idx) {
@@ -3103,6 +3856,39 @@ function completeChapterAction(idx) {
   }
 }
 
+// ==================== CERTIFICATE ELIGIBILITY GATE ====================
+
+function isEligibleForCertificate() {
+  const total = chaptersData.length; // 48
+
+  // Rule 1: All chapters completed
+  if (appState.completedChapters.size < total) return false;
+
+  // Rule 2: Every chapter has a recorded quiz score in quizBestScores
+  for (let i = 0; i < total; i++) {
+    if (!appState.quizBestScores[i]) return false;
+  }
+
+  // Rule 3: totalScore must be >= sum of all recorded quizBestScores.pts
+  //         (prevents tampered/inflated points mismatch)
+  const legitimatePts = Object.values(appState.quizBestScores)
+    .reduce((sum, r) => sum + (r.pts || 0), 0);
+  if (appState.totalScore < legitimatePts) return false;
+
+  return true;
+}
+
+// Returns a plain object with counts useful for the lock UI
+function getCertEligibilityStatus() {
+  const total      = chaptersData.length;
+  const completed  = appState.completedChapters.size;
+  const quizDone   = Object.keys(appState.quizBestScores).length;
+  const remaining  = total - completed;
+  const quizLeft   = total - quizDone;
+  const eligible   = isEligibleForCertificate();
+  return { total, completed, quizDone, remaining, quizLeft, eligible };
+}
+
 function updateCertificateName(newName) {
   const clean = (newName || '').trim();
   appState.studentName = clean || "Abraz's Python Student";
@@ -3111,16 +3897,174 @@ function updateCertificateName(newName) {
   persistData();
 }
 
+function updateCertRelation() {
+  const rel    = (document.getElementById('cert-relation-select')?.value || '').trim();
+  const father = (document.getElementById('cert-father-input')?.value   || '').trim();
+  const lineEl = document.getElementById('cert-relation-line');
+  if (!lineEl) return;
+  if (rel && father) {
+    lineEl.innerHTML = `<span style="font-family:'Dancing Script',cursive;font-size:1.1em;color:#1D4ED8;">${rel} ${father}</span>`;
+  } else {
+    lineEl.innerHTML = '';
+  }
+}
+
 function showCertificateModal() {
-  const nameEl = document.getElementById('cert-student-name');
-  if (nameEl) nameEl.textContent = appState.studentName || "Abraz's Python Student";
+  const nameEl  = document.getElementById('cert-student-name');
   const nameInp = document.getElementById('cert-name-input');
-  if (nameInp) nameInp.value = appState.studentName || '';
-  document.getElementById('cert-final-score').textContent = `Final Score: ${appState.totalScore} pts (${appState.completedChapters.size}/48 Chapters)`;
-  document.getElementById('cert-issue-date').textContent = new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' });
+  const scoreEl = document.getElementById('cert-final-score');
+  const dateEl  = document.getElementById('cert-issue-date');
+  const serial  = document.getElementById('cert-serial');
+
+  const studentName = appState.studentName || "Abraz's Python Student";
+  if (nameEl)  nameEl.textContent  = studentName;
+  if (nameInp) nameInp.value       = studentName;
+  if (scoreEl) scoreEl.textContent = `${appState.totalScore} Pts`;
+  if (dateEl)  dateEl.textContent  = new Date().toLocaleDateString('en-PK', { year:'numeric', month:'long', day:'numeric' });
+
+  // Generate a stable serial number from totalScore + completed count
+  if (serial) {
+    const num = String((appState.completedChapters.size * 1000 + appState.totalScore) % 99999 + 10000);
+    serial.textContent = num;
+  }
+
+  updateCertRelation();
+  updateCertLockUI();   // ← apply eligibility gate
   document.getElementById('certificate-modal').classList.add('open');
-  if (window.confetti) {
+  if (window.confetti && isEligibleForCertificate()) {
     confetti({ particleCount: 150, spread: 90 });
+  }
+}
+
+function updateCertLockUI() {
+  const st  = getCertEligibilityStatus();
+  const btn = document.getElementById('cert-download-btn');
+  const wm  = document.getElementById('cert-lock-watermark');
+  const pg  = document.getElementById('cert-progress-gate');
+
+  if (st.eligible) {
+    // ── UNLOCKED ───────────────────────────────────────────────
+    if (btn) {
+      btn.disabled  = false;
+      btn.innerHTML = '📥 Download PDF';
+      btn.className = 'btn btn-sm btn-primary font-bold gap-1';
+      btn.style.opacity = '1';
+      btn.style.cursor  = 'pointer';
+    }
+    if (wm) wm.style.display = 'none';
+    if (pg) pg.style.display = 'none';
+  } else {
+    // ── LOCKED ────────────────────────────────────────────────
+    const chLeft  = st.remaining;
+    const qLeft   = st.quizLeft;
+    const chPct   = Math.round((st.completed  / st.total) * 100);
+    const qPct    = Math.round((st.quizDone   / st.total) * 100);
+
+    if (btn) {
+      btn.disabled  = true;
+      btn.innerHTML = `🔒 Locked (${st.completed}/${st.total} Chapters)`;
+      btn.className = 'btn btn-sm btn-disabled font-bold gap-1';
+      btn.style.opacity = '0.55';
+      btn.style.cursor  = 'not-allowed';
+    }
+
+    // Watermark overlay on the card
+    if (wm) {
+      wm.style.display = 'flex';
+    }
+
+    // Progress gate bar above inputs
+    if (pg) {
+      pg.style.display = 'block';
+      pg.innerHTML = `
+        <div style="font-size:0.72rem;font-weight:700;color:#DC2626;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+          🔒 Certificate Locked
+          <span style="font-weight:400;opacity:.7;">— Complete all 48 chapters & quizzes to unlock</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <!-- Chapters bar -->
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:0.65rem;margin-bottom:2px;">
+              <span>📖 Chapters Completed</span>
+              <span style="font-weight:700;">${st.completed} / ${st.total}${chLeft > 0 ? ` &nbsp;(${chLeft} remaining)` : ' ✅'}</span>
+            </div>
+            <div style="height:6px;border-radius:9999px;background:#E2E8F0;overflow:hidden;">
+              <div style="height:100%;border-radius:9999px;width:${chPct}%;background:${chPct === 100 ? '#16A34A' : '#1D4ED8'};transition:width .4s;"></div>
+            </div>
+          </div>
+          <!-- Quizzes bar -->
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:0.65rem;margin-bottom:2px;">
+              <span>🧪 Quizzes Recorded</span>
+              <span style="font-weight:700;">${st.quizDone} / ${st.total}${qLeft > 0 ? ` &nbsp;(${qLeft} remaining)` : ' ✅'}</span>
+            </div>
+            <div style="height:6px;border-radius:9999px;background:#E2E8F0;overflow:hidden;">
+              <div style="height:100%;border-radius:9999px;width:${qPct}%;background:${qPct === 100 ? '#16A34A' : '#7C3AED'};transition:width .4s;"></div>
+            </div>
+          </div>
+        </div>`;
+    }
+  }
+}
+
+async function downloadCertificatePDF() {
+  // ── HARD ELIGIBILITY GUARD (anti-bypass) ──────────────────────────
+  if (!isEligibleForCertificate()) {
+    showToast('❌ Access Denied: Pehle tamam 48 chapters aur quizzes mukammal karein!', 'error');
+    return;
+  }
+
+  // ── Require student name + father's name ─────────────────────────
+  const studentName  = (document.getElementById('cert-name-input')?.value  || '').trim();
+  const fatherName   = (document.getElementById('cert-father-input')?.value || '').trim();
+  if (!studentName) {
+    showToast('⚠️ Student Name khali hai — pehle apna naam darj karein.', 'error');
+    document.getElementById('cert-name-input')?.focus();
+    return;
+  }
+  if (!fatherName) {
+    showToast('⚠️ Father\'s Name khali hai — walid ka naam bhi darj karein.', 'error');
+    document.getElementById('cert-father-input')?.focus();
+    return;
+  }
+  const btn = document.getElementById('cert-download-btn');
+  const card = document.getElementById('certificate-inner-wrap');
+  if (!card) return;
+
+  if (typeof html2pdf === 'undefined') {
+    showToast('⚠️ html2pdf library load nahi hui. Internet connection check karein.', 'error');
+    return;
+  }
+
+  const origText = btn.innerHTML;
+  btn.innerHTML  = '⏳ Generating PDF...';
+  btn.disabled   = true;
+
+  const safeStudentName = studentName.replace(/[^a-zA-Z0-9_\- ]/g, '').trim().replace(/\s+/g, '_') || 'Student';
+  const filename    = `Python_Seekho_Certificate_${safeStudentName}.pdf`;
+
+  // Temporarily remove box-shadow (html2pdf renders it oddly)
+  const origShadow = card.style.boxShadow;
+  card.style.boxShadow = 'none';
+
+  try {
+    await html2pdf()
+      .set({
+        margin:       0,
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      })
+      .from(card)
+      .save();
+    showToast('✅ Certificate PDF download ho gaya!', 'success');
+  } catch (err) {
+    showToast('❌ PDF generate karne mein error: ' + err.message, 'error');
+  } finally {
+    card.style.boxShadow = origShadow;
+    btn.innerHTML = origText;
+    btn.disabled  = false;
   }
 }
 
@@ -3165,25 +4109,81 @@ const THEMES = [
   "night", "coffee", "winter", "dim", "nord", "sunset"
 ];
 
+// Curated mood themes shown prominently in the dropdown
+const MOOD_THEMES = [
+  { name: "dark",      label: "Default Dark",       icon: "🌑", desc: "Dark slate & neon green"       },
+  { name: "night",     label: "Midnight Coder",      icon: "🌃", desc: "Deep obsidian & electric blue" },
+  { name: "light",     label: "Light Paper",         icon: "☀️", desc: "Clean warm white for daytime"  },
+  { name: "cyberpunk", label: "Cyberpunk / Synth",   icon: "🟣", desc: "Dark purple & vibrant cyan"    },
+  { name: "forest",    label: "Forest Focus",        icon: "🌿", desc: "Deep emerald & soft mint"      },
+];
+
 function applyTheme(name) {
   document.documentElement.setAttribute('data-theme', name);
   appState.theme = name;
   try { localStorage.setItem('py_seekho_theme', name); } catch(e) {}
-  const icon = name === 'dark' || name === 'night' || name === 'dracula' ? '🌙' : '☀️';
+  const mood = MOOD_THEMES.find(m => m.name === name);
   const el = document.getElementById('current-theme-icon');
-  if (el) el.textContent = icon;
+  if (el) el.textContent = mood ? mood.icon : (name === 'dark' || name === 'night' || name === 'dracula' ? '🌙' : '☀️');
 }
 
 function buildThemeMenu() {
   const list = document.getElementById('theme-menu-list');
   if (!list) return;
-  list.innerHTML = '<li class="menu-title text-[10px]">Chunno Theme</li>';
-  THEMES.forEach(t => {
-    const li = document.createElement('li');
-    li.innerHTML = `<a class="${t === appState.theme ? 'active' : ''}">${t}</a>`;
-    li.onclick = () => applyTheme(t);
-    list.appendChild(li);
+  list.innerHTML = '';
+
+  // Section title
+  const title = document.createElement('div');
+  title.style.cssText = 'padding:8px 12px 4px;font-size:0.68rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:0.5;';
+  title.textContent = '✨ Theme / Mood';
+  list.appendChild(title);
+
+  // Mood themes
+  MOOD_THEMES.forEach(m => {
+    const btn = document.createElement('button');
+    const isActive = m.name === appState.theme;
+    btn.style.cssText = `display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:10px;border:none;cursor:pointer;text-align:left;transition:background 0.15s;background:${isActive ? 'oklch(var(--p)/0.18)' : 'transparent'};outline:${isActive ? '1.5px solid oklch(var(--p)/0.5)' : 'none'};`;
+    btn.innerHTML = `
+      <span style="font-size:1.1rem;width:22px;text-align:center;">${m.icon}</span>
+      <span style="flex:1;">
+        <span style="display:block;font-weight:700;font-size:0.82rem;">${m.label}</span>
+        <span style="display:block;font-size:0.7rem;opacity:0.55;">${m.desc}</span>
+      </span>
+      ${isActive ? '<span style="color:oklch(var(--p));font-size:0.75rem;">✓</span>' : ''}
+    `;
+    btn.onmouseover = () => { if (m.name !== appState.theme) btn.style.background = 'oklch(var(--b3))'; };
+    btn.onmouseout  = () => { if (m.name !== appState.theme) btn.style.background = 'transparent'; };
+    btn.onclick = () => { applyTheme(m.name); buildThemeMenu(); };
+    list.appendChild(btn);
   });
+
+  // Divider
+  const div = document.createElement('div');
+  div.style.cssText = 'margin:6px 12px;border-top:1px solid oklch(var(--b3));';
+  list.appendChild(div);
+
+  // "More themes" title
+  const more = document.createElement('div');
+  more.style.cssText = 'padding:4px 12px 4px;font-size:0.65rem;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;opacity:0.4;';
+  more.textContent = 'More themes';
+  list.appendChild(more);
+
+  // All remaining DaisyUI themes (not in MOOD_THEMES)
+  const moodNames = MOOD_THEMES.map(m => m.name);
+  const otherThemes = THEMES.filter(t => !moodNames.includes(t));
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px 8px;';
+  otherThemes.forEach(t => {
+    const chip = document.createElement('button');
+    const isActive = t === appState.theme;
+    chip.style.cssText = `font-size:0.72rem;padding:3px 9px;border-radius:20px;border:1px solid oklch(var(--b3));cursor:pointer;transition:all 0.15s;background:${isActive ? 'oklch(var(--p))' : 'oklch(var(--b3))'};color:${isActive ? 'oklch(var(--pc))' : 'inherit'};font-weight:${isActive ? '700' : '500'};`;
+    chip.textContent = t;
+    chip.onmouseover = () => { if (t !== appState.theme) chip.style.background = 'oklch(var(--b3)/0.7)'; };
+    chip.onmouseout  = () => { if (t !== appState.theme) chip.style.background = 'oklch(var(--b3))'; };
+    chip.onclick = () => { applyTheme(t); buildThemeMenu(); };
+    grid.appendChild(chip);
+  });
+  list.appendChild(grid);
 }
 
 function populateLessonMenu() {
@@ -3247,6 +4247,8 @@ document.addEventListener('DOMContentLoaded', () => {
   populateLessonMenu();
   renderCourseSidebar();
   renderNotebook();
+  // Warm up RAG index in background (non-blocking)
+  setTimeout(initRagIndex, 400);
 
   // Mode Switchers
   document.getElementById('tab-mode-course').onclick = () => switchAppMode('course');
@@ -3301,17 +4303,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.onclick = () => switchChapterTab(btn.dataset.tab);
   });
 
-  // Chapter Action Buttons
-  document.getElementById('ch-open-notebook-btn').onclick = () => loadChapterToNotebook(appState.currentChapterIdx);
-  document.getElementById('ch-ask-gemini-btn').onclick = () => {
-    openGeminiDrawer();
-    const ch = chaptersData[appState.currentChapterIdx];
-    const input = document.getElementById('drawer-chat-input');
-    if (input) {
-      input.value = `Baraye meharbani Chapter "${ch.title}" (${ch.subtitle}) ka concept Roman Urdu mein simple misal se samjhao.`;
-      document.getElementById('drawer-chat-form').dispatchEvent(new Event('submit'));
-    }
-  };
+  // Chapter Action Buttons (removed from UI; kept as callable functions only)
+  // ch-open-notebook-btn and ch-ask-gemini-btn no longer rendered
 
   // Notebook Toolbar Actions (Authentic JupyterLab 7 Controls)
   document.getElementById('nb-run-selected-btn').onclick = () => {
@@ -3356,7 +4349,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Gemini AI Drawer & FAB
-  document.getElementById('ai-fab').onclick = toggleGeminiDrawer;
+  // ai-fab click is handled inside setupFabEyes (drag vs tap logic)
   document.getElementById('close-gemini-drawer').onclick = closeGeminiDrawer;
   document.getElementById('drawer-settings-btn').onclick = () => document.getElementById('settings-modal').classList.add('open');
 
@@ -3399,12 +4392,41 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateKeyBadge() {
     if (!keySavedBadge) return;
     if (appState.geminiApiKey && appState.geminiApiKey.length > 10) {
-      keySavedBadge.textContent = '✓ Key Saved';
+      const provider = detectProvider(appState.geminiApiKey);
+      keySavedBadge.textContent = provider ? `✓ ${provider.name}` : '✓ Key Saved';
       keySavedBadge.className = 'badge badge-xs badge-success font-mono';
     } else {
       keySavedBadge.textContent = 'Not Set';
       keySavedBadge.className = 'badge badge-xs badge-ghost font-mono';
     }
+  }
+
+  // Live provider detection on key input
+  const keyInput = document.getElementById('gemini-api-key-input');
+  const providerBadge = document.getElementById('provider-detect-badge');
+  if (keyInput && providerBadge) {
+    keyInput.addEventListener('input', () => {
+      const val = keyInput.value.replace(/['"\s]/g, '');
+      const p = detectProvider(val);
+      if (p && val.length > 8) {
+        const mode = validateAiResponseMode(appState.aiResponseMode);
+        const autoModel = getProviderModel(p, mode);
+        providerBadge.innerHTML = `${p.icon} Detected: <strong>${p.name}</strong> &nbsp;•&nbsp; Auto-model: <code>${autoModel}</code>`;
+        providerBadge.classList.remove('hidden');
+        // Update the model select to reflect auto-selected model
+        const sel = document.getElementById('gemini-model-select');
+        if (sel) {
+          if (![...sel.options].some(o => o.value === autoModel)) {
+            const opt = document.createElement('option');
+            opt.value = autoModel; opt.textContent = `${autoModel} (${p.name} auto)`;
+            sel.appendChild(opt);
+          }
+          sel.value = autoModel;
+        }
+      } else {
+        providerBadge.classList.add('hidden');
+      }
+    });
   }
 
   function showApiStatusBox(type, htmlMsg) {
@@ -3427,11 +4449,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('gemini-model-select').value = appState.geminiModel || 'gemini-2.5-flash';
     document.getElementById('sound-toggle-input').checked = appState.soundEnabled;
     if (statusBox) statusBox.classList.add('hidden');
+    // Show detection badge if key already set
+    if (providerBadge) {
+      const existing = appState.geminiApiKey && appState.geminiApiKey.length > 8;
+      if (existing) {
+        const p = detectProvider(appState.geminiApiKey);
+        if (p) {
+          const autoModel = getProviderModel(p, validateAiResponseMode(appState.aiResponseMode));
+          providerBadge.innerHTML = `${p.icon} Detected: <strong>${p.name}</strong> &nbsp;•&nbsp; Auto-model: <code>${autoModel}</code>`;
+          providerBadge.classList.remove('hidden');
+        } else { providerBadge.classList.add('hidden'); }
+      } else { providerBadge.classList.add('hidden'); }
+    }
     updateKeyBadge();
     settingsModal.classList.add('open');
   }
 
-  document.getElementById('open-settings-btn').onclick = openSettingsModal;
+  document.getElementById('open-settings-btn')?.addEventListener('click', openSettingsModal);
   document.getElementById('ai-lab-settings-trigger').onclick = openSettingsModal;
   document.getElementById('drawer-settings-btn').onclick = openSettingsModal;
   document.getElementById('close-settings-btn').onclick = () => settingsModal.classList.remove('open');
@@ -3453,13 +4487,20 @@ document.addEventListener('DOMContentLoaded', () => {
   
   document.getElementById('save-settings-btn').onclick = () => {
     const cleanKey = document.getElementById('gemini-api-key-input').value.replace(/['"\s]/g, '');
+    const provider = detectProvider(cleanKey);
+    const mode = validateAiResponseMode(appState.aiResponseMode);
+    const pickedModel = document.getElementById('gemini-model-select').value;
+    // If user hasn't manually changed the model from the auto-detected one, keep auto
+    const autoModel = provider ? getProviderModel(provider, mode) : pickedModel;
     appState.geminiApiKey = cleanKey;
-    appState.geminiModel = document.getElementById('gemini-model-select').value;
+    appState.geminiModel = pickedModel || autoModel;
+    appState._userPickedModel = pickedModel !== autoModel;
     appState.soundEnabled = document.getElementById('sound-toggle-input').checked;
     persistData();
     updateKeyBadge();
     settingsModal.classList.remove('open');
-    showToast('⚙️ Settings & API Key saved!', 'success');
+    const provName = provider ? provider.name : '';
+    showToast(`⚙️ Settings saved!${provName ? ' (' + provName + ')' : ''}`, 'success');
   };
 
   document.getElementById('test-gemini-key-btn').onclick = async () => {
@@ -3477,20 +4518,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const testBtn = document.getElementById('test-gemini-key-btn');
     testBtn.disabled = true;
     testBtn.textContent = '⏳ Testing...';
-    showApiStatusBox('info', '⏳ Google Gemini API se connect ho raha hai (testing models)...');
+
+    const provider = detectProvider(cleanKey);
+    const providerName = provider ? provider.name : 'AI Provider';
+    showApiStatusBox('info', `⏳ ${providerName} API se connect ho raha hai...`);
 
     appState.geminiApiKey = cleanKey;
-    appState.geminiModel = selectedModel;
+    appState.geminiModel = selectedModel || (provider ? getProviderModel(provider, appState.aiResponseMode) : 'gemini-2.5-flash');
 
-    const res = await callGeminiApi('Hi', '', true);
+    const res = await callProviderApi('Hi', '', true, appState.aiResponseMode);
     testBtn.disabled = false;
     testBtn.textContent = '🔌 Test Connection';
 
-    if (res && !res.includes('Live Gemini API Error:')) {
+    if (res && !res.includes('Error:')) {
       persistData();
       updateKeyBadge();
-      showApiStatusBox('success', `✅ <strong>Connected Successfully!</strong><br>Active Model: <code>${appState.geminiModel}</code> — Aapki API key bilkul theek kaam kar rahi hai aur auto-save ho gayi hai!`);
-      showToast(`✅ Connected! (${appState.geminiModel})`, 'success');
+      const provider = detectProvider(cleanKey);
+      const provName = provider ? provider.name : 'AI Provider';
+      showApiStatusBox('success', `✅ <strong>Connected Successfully!</strong><br>Provider: <strong>${provName}</strong> &nbsp;•&nbsp; Active Model: <code>${appState.geminiModel}</code><br>Aapki API key bilkul theek kaam kar rahi hai aur auto-save ho gayi hai!`);
+      showToast(`✅ Connected! (${provName} • ${appState.geminiModel})`, 'success');
     } else {
       // Extract specific error reason
       const match = res ? res.match(/\*Live Gemini API Error: (.+?)\*/) : null;
@@ -3546,6 +4592,117 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start Pyodide in background
   initPyodideKernel();
+
+  // ── Floating FAB: Draggable circle + mouse-tracking eyes ──────────
+  (function setupFabEyes() {
+    const fab    = document.getElementById('ai-fab');
+    const pupils = [
+      document.getElementById('fab-pupil-left'),
+      document.getElementById('fab-pupil-right'),
+    ];
+    const eyes = [
+      document.getElementById('fab-eye-left'),
+      document.getElementById('fab-eye-right'),
+    ];
+    if (!fab) return;
+
+    const MAX_SHIFT  = 4;   // max px pupil travels from centre
+    const DRAG_THRESHOLD = 6; // px moved before it counts as a drag
+
+    // ── Eye tracking ─────────────────────────────────────────────
+    function trackEyes(mx, my) {
+      eyes.forEach((eye, i) => {
+        if (!eye || !pupils[i]) return;
+        const r  = eye.getBoundingClientRect();
+        const cx = r.left + r.width  / 2;
+        const cy = r.top  + r.height / 2;
+        const angle = Math.atan2(my - cy, mx - cx);
+        const dist  = Math.min(MAX_SHIFT, Math.hypot(mx - cx, my - cy) / 8);
+        pupils[i].style.transform =
+          `translate(${(Math.cos(angle) * dist).toFixed(2)}px,${(Math.sin(angle) * dist).toFixed(2)}px)`;
+      });
+    }
+    document.addEventListener('mousemove', e => trackEyes(e.clientX, e.clientY), { passive: true });
+
+    // ── Drag logic (pointer events — works for both mouse & touch) ──
+    let dragging   = false;
+    let didDrag    = false;   // true once DRAG_THRESHOLD exceeded
+    let startX     = 0, startY     = 0;
+    let startRight = 0, startBottom = 0;
+
+    function getPos() {
+      // read current right/bottom from inline style (set during drag) or CSS default
+      const style = fab.style;
+      const right  = style.right  ? parseFloat(style.right)  : 24;
+      const bottom = style.bottom ? parseFloat(style.bottom) : 24;
+      return { right, bottom };
+    }
+
+    fab.addEventListener('pointerdown', e => {
+      // only main button / first touch
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      fab.setPointerCapture(e.pointerId);
+      dragging = true;
+      didDrag  = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      const pos = getPos();
+      startRight  = pos.right;
+      startBottom = pos.bottom;
+    });
+
+    fab.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (!didDrag && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+        didDrag = true;
+        fab.classList.add('is-dragging');
+      }
+      if (!didDrag) return;
+
+      // Convert delta (screen px) → right/bottom offsets
+      let newRight  = startRight  - dx;
+      let newBottom = startBottom + dy;
+
+      // Clamp inside viewport
+      const W = window.innerWidth, H = window.innerHeight;
+      const S = fab.offsetWidth || 60;
+      newRight  = Math.max(8, Math.min(W - S - 8, newRight));
+      newBottom = Math.max(8, Math.min(H - S - 8, newBottom));
+
+      fab.style.right  = newRight  + 'px';
+      fab.style.bottom = newBottom + 'px';
+      fab.style.left   = 'auto';
+      fab.style.top    = 'auto';
+
+      // Eyes track pointer while dragging
+      trackEyes(e.clientX, e.clientY);
+    });
+
+    fab.addEventListener('pointerup', e => {
+      if (!dragging) return;
+      dragging = false;
+      fab.classList.remove('is-dragging');
+
+      if (!didDrag) {
+        // Clean tap — open the drawer
+        toggleGeminiDrawer();
+      }
+      didDrag = false;
+    });
+
+    fab.addEventListener('pointercancel', () => {
+      dragging = false;
+      didDrag  = false;
+      fab.classList.remove('is-dragging');
+    });
+
+    // Prevent the old onclick from double-firing (we handle it above)
+    fab.onclick = null;
+  })();
 });
 
 </script>
